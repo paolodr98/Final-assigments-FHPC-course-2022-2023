@@ -21,7 +21,7 @@ void initialize(char *fname, int maxval, int xsize, int ysize){
 		int myid = omp_get_thread_num();
 		unsigned int my_seed = myid*myid + 2*myid + 3;
 
-		#pragma omp for schedule(static, xsize*ysize)
+		#pragma omp for schedule(static, xsize)
 		for (int i=0; i<xsize*ysize; i++)
 		{
 			random = (unsigned char)(rand_r(&my_seed)%2); //generate random number, considers it modulo 2, cast it in char; 

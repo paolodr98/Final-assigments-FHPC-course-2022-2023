@@ -11,9 +11,9 @@ int main(int argc, char **argv){
 
     char fname[100] = "try01.pgm";
     int maxsize, xsize, ysize;
-    maxsize = 1;
-    xsize = 100;
-    ysize = 100;
+    maxsize = 255;
+    xsize = 10;
+    ysize = 10;
 
     initialize(fname, maxsize, xsize, ysize);
 
