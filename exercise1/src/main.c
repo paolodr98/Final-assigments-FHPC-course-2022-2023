@@ -9,7 +9,7 @@
 
 int main(int argc, char **argv){
 
-    char fname[100] = "try01.txt";
+    char fname[100] = "try01.pgm";
     int maxsize, xsize, ysize;
     maxsize = 1;
     xsize = 100;
