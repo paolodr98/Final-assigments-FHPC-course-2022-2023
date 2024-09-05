@@ -1,6 +1,6 @@
-CC = gcc
+CC = mpicc
 
-SRCS = main.c read_write.c initialize.c
+SRCS = main.c read_write.c initialize.c static_evolution.c
 OBJS = $(SRCS:.c=.o)
 
 TARGET = main.x
