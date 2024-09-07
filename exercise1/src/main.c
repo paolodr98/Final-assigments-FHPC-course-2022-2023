@@ -35,8 +35,9 @@ char *fname  = NULL;
 int main ( int argc, char **argv){
 
     char fname[100] = "try01.pgm";
-    int k = 100;
+    int k = 5;
     int rank, size;
+    int maxval = 255;
     MPI_Init( NULL, NULL );
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -83,7 +84,9 @@ int main ( int argc, char **argv){
     int rows_read = k / size; 
     rows_read = (rank < k % size) ? rows_read+1 : rows_read;
 
-    initialize_parallel(k, fname, rank, size, rows_read);
+    initialize_parallel(k, fname, rank, size, rows_read, maxval);
+
+    //static_ev(fname, rank, size, k,rows_read);
 
     /*
     if(action == INIT){
