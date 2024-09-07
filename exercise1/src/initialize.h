@@ -6,7 +6,7 @@
 #include <stdio.h> 
 
 //void initialize(char *fname, int maxval, int xsize, int ysize);
-void initialize_parallel(int k, char *fname, int rank, int size, int rows_read, int maxval);
+void initialize_parallel(int k, char *fname, int rank, int size, int maxval);
 
 #endif 
 

@@ -6,13 +6,16 @@
 #include <mpi.h>
 #include "read_write.h"
 
-void initialize_parallel(int k, char *fname, int rank, int size, int rows_read, int maxval){
+void initialize_parallel(int k, char *fname, int rank, int size, int maxval){
 
-	/* define variables */
+	//_____________define variables_____________ 
 	unsigned char *local_grid;
 	unsigned char* gathered_grid = NULL;
 
-	/* allocate memories on each processor depending on the number of rows*/
+	int rows_read = k / size; 
+    rows_read = (rank < k % size) ? rows_read+1 : rows_read;
+
+	//_____________allocate memories on each processor depending on the number of rows_____________
 	local_grid= (unsigned char*)malloc(rows_read*k*sizeof(unsigned char) );
 
 	srand(time(NULL)+rank);
@@ -21,7 +24,7 @@ void initialize_parallel(int k, char *fname, int rank, int size, int rows_read, 
 	unsigned char minval= (unsigned char)0;
 	unsigned char _maxval= (unsigned char)maxval;
 
-	/* generate each sub-array on each processor */
+	//_____________generate each sub-array on each processor_____________
 	#pragma omp parallel for
 	for(long i=0; i<rows_read*k; i++){
         	int random_number = (rand() % (maxval+1));
@@ -31,8 +34,7 @@ void initialize_parallel(int k, char *fname, int rank, int size, int rows_read, 
 	printf("\n");
 	printf("%d rows for processor, %d, of n %d\n", rows_read, rank, size);
 
-	/* GATHER THE DATA IN THE ROOT PROCESSOR */
-
+	//_____________GATHER THE DATA IN THE ROOT PROCESSOR_____________
 	if (rank == 0) {
         	gathered_grid = (unsigned char*)malloc(k * k*sizeof(unsigned char));
 	}
@@ -56,7 +58,7 @@ void initialize_parallel(int k, char *fname, int rank, int size, int rows_read, 
 
 	if (rank == 0) {
 		for (int i = 0; i< k*k; i++){
-        	printf("%d\n", gathered_grid[i]);
+        	printf("%d element: %d\n", i, gathered_grid[i]);
         }
 		printf("\n");
 

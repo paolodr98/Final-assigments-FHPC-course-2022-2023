@@ -84,9 +84,12 @@ int main ( int argc, char **argv){
     int rows_read = k / size; 
     rows_read = (rank < k % size) ? rows_read+1 : rows_read;
 
-    initialize_parallel(k, fname, rank, size, rows_read, maxval);
+    initialize_parallel(k, fname, rank, size, maxval);
+    if (rank == 0){
+        printf("INIT DONE\n");
+    }
 
-    //static_ev(fname, rank, size, k,rows_read);
+    static_ev(fname, rank, size, k, maxval);
 
     /*
     if(action == INIT){
