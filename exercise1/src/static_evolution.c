@@ -6,27 +6,74 @@
 
 
 
-void update_cell(){
+void update_cell(unsigned char *local_array, unsigned char *new_local_array, int k, int rows_read, int rank){
+    unsigned char max=255; //alive
+	unsigned char min=0; //dead
 
+    #pragma omp parallel for
+    for (int i = k; i<(rows_read+1)*k; i++){
+        int count = 0;
+        int row, column;
+
+        row = i/k;
+        column = i%k;
+
+        // Periodic boundary conditions for rows
+        int row_above = row - 1;
+        int row_below = row + 1;
+
+        // Periodic boundary conditions for columns
+        int col_left = (column == 0) ? k-1 : column - 1;
+		int col_right = (column == (k-1)) ? 0 : column + 1;
+
+        // Sum of neighbors (up, middle, down)
+        int up = local_array[row_above * k + col_left] +
+                 local_array[row_above * k + column] +
+                 local_array[row_above * k + col_right];
+                 
+        int middle = local_array[row * k + col_left] +
+                     local_array[row * k + col_right];
+
+        int down = local_array[row_below * k + col_left] +
+                   local_array[row_below * k + column] +
+                   local_array[row_below * k + col_right];
+
+        count= up + down + middle;
+
+        new_local_array[i-k] = (count == 765 || count == 510) ? 255 : 0; 
+
+        //DEBUG
+        /*printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, n_local_array[i-k]);*/
+    }
 }
 
 
-void static_ev(char *filename, int rank, int size, int k, int maxval){
+
+
+void static_ev(char *filename, int rank, int size, int k, int maxval, int s, int t){
 
     int rows_read = k / size; 
     rows_read = (rank < k % size) ? rows_read+1 : rows_read;
     unsigned char *local_array = NULL;
+    unsigned char *new_local_array = NULL;
     unsigned char *completeMatrix = NULL;
+
+    int rank_above= (rank==0)? size-1 : rank-1;
+  	int rank_below= (rank==size-1)? 0: rank+1;
+
 
     // _____________read the image in root processor_____________
     if(rank==0){
         completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
 		read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
-        /* DEBUG
+        
+        //DEBUG
+        /*
         for (int i = 0; i< k*k; i++){
         printf("%d element: %d\n",i, completeMatrix[i]);
         }
-        */  
+        */
+          
   	}
 
     // _____________Gathering all sizes and displacements in master processor_____________
@@ -81,23 +128,91 @@ void static_ev(char *filename, int rank, int size, int k, int maxval){
         MPI_Recv(local_array, (rows_read + 2) * k, MPI_UNSIGNED_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
-    /* DEBUG
-    printf("PROCESSOR %d\n", rank);
+  
+    printf("PROCESSOR INIT %d\n", rank);
     for (int i = 0; i<(rows_read+2) * k; i++){
         printf("element %d of local array is %d\n", i, local_array[i]);
     }
-    */
+    printf("\n");
+   
+    
 
     // _____________start the evolution for t steps_____________
-    for(int i=1; i <=t; i++){
+    new_local_array = (unsigned char*)malloc((rows_read) * k * sizeof(unsigned char));
+    for(int i=1; i <=t; i++){ 
 
+        update_cell(local_array, new_local_array, k, rows_read, rank);
 
+        //DEBUG
+        
+        
+        printf("PROCESSOR NEW %d\n", rank);
+        for (int i = 0; i<(rows_read) * k; i++){
+        printf("element %d of NEW array is %d\n", i, new_local_array[i]);
+        }
+        printf("\n");
 
+        unsigned char *temp = new_local_array;
+        new_local_array = local_array;
+        local_array = temp-k;
+        
+
+        // change auxiliary rows 
+        // Swap pointers before sending/receiving auxiliary rows
+        MPI_Request request[4]; // Array of MPI_Request, necessary to ensure that the non blocking receive is complete
+
+        if(rank == 0){ // TAG IS ALWAYS THE RANK OF THE SENDING PROCESS + n_step
+            // Send message to last process
+            MPI_Isend(local_array+k, k, MPI_UNSIGNED_CHAR, size-1, rank + i + 1, MPI_COMM_WORLD, &request[0]);
+            // Send message to the local_array process
+            MPI_Isend(local_array + rows_read*k, k, MPI_UNSIGNED_CHAR, rank+1, rank + i, MPI_COMM_WORLD, &request[1]);
+            
+            // Blocking receive message
+            // Lower row receive
+            MPI_Irecv(local_array + k + rows_read*k, k, MPI_UNSIGNED_CHAR, rank+1, rank+1 + i, MPI_COMM_WORLD, &request[2]);
+            // Upper row receive from final process
+            MPI_Irecv(local_array, k, MPI_UNSIGNED_CHAR, size-1, size-1 + i + 1, MPI_COMM_WORLD, &request[3]);
+
+        }else if(rank == size-1){
+            // Send message to process before
+            MPI_Isend(local_array+k, k, MPI_UNSIGNED_CHAR, rank-1, rank + i, MPI_COMM_WORLD, &request[0]);
+            // Send message to process 0
+            MPI_Isend(local_array + rows_read*k, k, MPI_UNSIGNED_CHAR, 0, rank + i +1 , MPI_COMM_WORLD, &request[1]);
+            
+            // Lower row receive
+            MPI_Irecv(local_array + k + rows_read*k, k, MPI_UNSIGNED_CHAR, 0, 0+i+1, MPI_COMM_WORLD, &request[2]);
+            // Upper row receive
+            MPI_Irecv(local_array, k, MPI_UNSIGNED_CHAR, rank-1, rank-1 + i, MPI_COMM_WORLD, &request[3]);
+        }else{
+            // Send message to process before
+            MPI_Isend(local_array+k, k, MPI_UNSIGNED_CHAR, rank-1, rank + i, MPI_COMM_WORLD, &request[0]);
+            // Send message to process after
+            MPI_Isend(local_array + rows_read*k, k, MPI_UNSIGNED_CHAR, rank+1, rank + i, MPI_COMM_WORLD, &request[1]);
+            
+            // Upper row receive
+            MPI_Irecv(local_array, k, MPI_UNSIGNED_CHAR, rank-1, rank-1 + i, MPI_COMM_WORLD, &request[2]);
+            // Lower row receive
+            MPI_Irecv(local_array + k + rows_read*k, k, MPI_UNSIGNED_CHAR, rank+1, rank+1+i, MPI_COMM_WORLD, &request[3]);
+        } 
+        MPI_Waitall(4, request, MPI_STATUS_IGNORE); // To ensure they all do not alter the buffer by moving to next iteration.
+        
+        printf("PROCESSOR NEXT STEP %d\n", rank);
+        for (int i = 0; i<(rows_read+2) * k; i++){
+        printf("element %d of FOR NEXT STEP array is %d\n", i, local_array[i]);
+        }
+        printf("\n");
+        printf("\n");
+        
+
+        
+        if((s!=0)&&(i%s==0)){
+
+        }
+        
 
 
     }
 
-    // if needed gather the data in the master processor to write a .pgm
 
     // write the last step in a .pgm file
 

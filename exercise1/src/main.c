@@ -41,6 +41,8 @@ int main ( int argc, char **argv){
     MPI_Init( NULL, NULL );
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int t = 1;
+    int s = 0;
 
     /*
     int action = 0;
@@ -84,12 +86,14 @@ int main ( int argc, char **argv){
     int rows_read = k / size; 
     rows_read = (rank < k % size) ? rows_read+1 : rows_read;
 
+    /*
     initialize_parallel(k, fname, rank, size, maxval);
     if (rank == 0){
         printf("INIT DONE\n");
     }
+    */
 
-    static_ev(fname, rank, size, k, maxval);
+    static_ev(fname, rank, size, k, maxval, s,t);
 
     /*
     if(action == INIT){

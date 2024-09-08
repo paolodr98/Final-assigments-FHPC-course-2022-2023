@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdio.h> 
 
-void update_cell();
-void static_ev(char *filename, int rank, int size, int k, int maxval);
+void static_ev(char *filename, int rank, int size, int k, int maxval, int s, int t);
 
 #endif 
