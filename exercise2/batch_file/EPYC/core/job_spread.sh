@@ -15,10 +15,10 @@ export LD_LIBRARY_PATH=/u/dssc/pdarol00/myblis/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/u/dssc/pdarol00/intel/oneapi/mkl/2024.2/lib:$LD_LIBRARY_PATH
 
 export OMP_PLACES=cores
-export OMP_PROC_BIIND=close
+export OMP_PROC_BIIND=spread
 
 make_dir="/u/dssc/pdarol00/Final-assigments-FHPC-course-2022-2023/exercise2"
-output_dir="/u/dssc/pdarol00/Final-assigments-FHPC-course-2022-2023/exercise2/batch_file/EPYC/core/output_close"
+output_dir="/u/dssc/pdarol00/Final-assigments-FHPC-course-2022-2023/exercise2/batch_file/EPYC/core/output_spread"
 
 srun -n1 make -C $make_dir cpu # Now I have all the needed executables.
 
