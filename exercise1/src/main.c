@@ -41,8 +41,8 @@ int main ( int argc, char **argv){
     MPI_Init( NULL, NULL );
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
-    int t = 1;
-    int s = 0;
+    int t = 5;
+    int s = 2;
 
     /*
     int action = 0;
