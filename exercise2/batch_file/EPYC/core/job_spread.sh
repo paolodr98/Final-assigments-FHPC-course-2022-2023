@@ -7,15 +7,15 @@
 #SBATCH --mem=200gb 
 #SBATCH --time=02:00:00 
 #SBATCH --exclusive
-#SBATCH --output=cores_close.out
+#SBATCH --output=cores_spread.out
 
-module load openBLAS/0.3.26
+module load openBLAS/0.3.26-omp
 
 export LD_LIBRARY_PATH=/u/dssc/pdarol00/myblis/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/u/dssc/pdarol00/intel/oneapi/mkl/2024.2/lib:$LD_LIBRARY_PATH
 
 export OMP_PLACES=cores
-export OMP_PROC_BIIND=spread
+export OMP_PROC_BIND=spread
 
 make_dir="/u/dssc/pdarol00/Final-assigments-FHPC-course-2022-2023/exercise2"
 output_dir="/u/dssc/pdarol00/Final-assigments-FHPC-course-2022-2023/exercise2/batch_file/EPYC/core/output_spread"
@@ -27,7 +27,7 @@ m_size=10000
 # Loop over implementations and data types
 for implem in 'oblas' 'mkl' 'blis'
 do
-    for type in 'double' 'float'
+    for type in 'float' #'double'
     do
         filename="$output_dir/$implem"_"$type".csv
         # Check if the file exists, if not create it and write the header
@@ -39,15 +39,16 @@ do
         do
             export OMP_NUM_THREADS=$n_threads
             export BLIS_NUM_THREADS=$n_threads
+            #export OPENBLAS_NUM_THREADS=$n_threads
+            #export MKL_NUM_THREADS=$n_threads
 
-            # Run everything with openBLAS double
             for j in 1 2 3 4 5 # Take multiple measurements
             do
-                srun -n1 --cpus-per-task=$n_threads ./gemm_"$implem"_"$type".x $m_size $m_size $m_size > output_close.txt # Just a temporary file
+                srun -n1 --cpus-per-task=$n_threads $make_dir/gemm_"$implem"_"$type".x $m_size $m_size $m_size > output_spread.txt # Just a temporary file
                 
                 # Extract information using grep and regular expressions
-                times=$(grep -o 'Time: [0-9.]*' output_close.txt | cut -d' ' -f2)
-                gflops=$(grep -o 'GFLOPS: [0-9.]*' output_close.txt | cut -d' ' -f2)
+                times=$(grep -o 'Time: [0-9.]*' output_spread.txt | cut -d' ' -f2)
+                gflops=$(grep -o 'GFLOPS: [0-9.]*' output_spread.txt | cut -d' ' -f2)
                 
                 # Append the thread information to the existing CSV file
                 echo "$n_threads,$times,$gflops" >> $filename
@@ -55,4 +56,4 @@ do
         done
     done
 done
-rm output_close.txt # Delete the temporary file
+rm output_spread.txt # Delete the temporary file
