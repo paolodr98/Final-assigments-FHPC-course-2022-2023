@@ -37,6 +37,8 @@
 #define GEMMCPU cblas_dgemm
 #endif
 
+#include <omp.h>
+
 struct timespec diff(struct timespec start, struct timespec end)
 {
         struct timespec temp;
@@ -118,7 +120,8 @@ int main(int argc, char** argv)
     double gflops = 2.0 * m *n*k;
     gflops = gflops/elapsed*1.0e-9; 
     printf ("\n Elapsed time %d.%d s\n\n\n", diff(begin,end).tv_sec, diff(begin,end).tv_nsec );
-    printf("%dx%dx%d\t%lf s\t%lf GFLOPS\n", m, n, k, elapsed, gflops);
+    printf("%dx%dx%d\tTime: %lf s\tGFLOPS: %lf\n", m, n, k, elapsed, gflops);
+    //printf("%dx%dx%d\t%lf s\t%lf GFLOPS\n", m, n, k, elapsed, gflops);
 
 
 #ifdef PRINT
