@@ -8,6 +8,7 @@
 #include "read_write.h"
 #include "initialize.h"
 #include "static_evolution.h"
+#include "ordered_evolution.h"
 
 /*
 
@@ -42,7 +43,7 @@ int main ( int argc, char **argv){
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     int t = 5;
-    int s = 2;
+    int s = 1;
 
     /*
     int action = 0;

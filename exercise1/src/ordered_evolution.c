@@ -4,6 +4,95 @@
 #include <mpi.h> 
 
 
+void update_cell(unsigned char *local_array, int k, int rows_read){
+    unsigned char max=255; //alive
+	unsigned char min=0; //dead
+
+    for (int i = k; i<(rows_read+1)*k; i++){
+        int count = 0;
+        int row, column;
+
+        row = i/k;
+        column = i%k;
+
+        // Periodic boundary conditions for rows
+        int row_above = row - 1;
+        int row_below = row + 1;
+
+        // Periodic boundary conditions for columns
+        int col_left = (column == 0) ? k-1 : column - 1;
+		int col_right = (column == (k-1)) ? 0 : column + 1;
+
+        // Sum of neighbors (up, middle, down)
+        int up = local_array[row_above * k + col_left] +
+                 local_array[row_above * k + column] +
+                 local_array[row_above * k + col_right];
+                 
+        int middle = local_array[row * k + col_left] +
+                     local_array[row * k + col_right];
+
+        int down = local_array[row_below * k + col_left] +
+                   local_array[row_below * k + column] +
+                   local_array[row_below * k + col_right];
+
+        count= up + down + middle;
+
+        local_array[i] = (count == 765 || count == 510) ? 255 : 0; 
+
+        //DEBUG
+        /*printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, n_local_array[i-k]);*/
+    }
+}
+
+void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, int size, int rows_read, int* list_rows_proc){
+    int *recvcounts = NULL;
+    int *displs = NULL;
+
+    if (rank == 0) {
+        recvcounts = (int *)malloc(size * sizeof(int));
+        displs = (int *)malloc(size * sizeof(int));
+
+        // Prepare recvcounts and displs based on list_rows_proc
+        int offset = 0;
+        for (int p = 0; p < size; p++) {
+            recvcounts[p] = list_rows_proc[p] * k; // Number of elements to receive from each process
+            displs[p] = offset;
+            offset += recvcounts[p];
+        }
+    }
+    // Send counts are the same for all processes
+    int sendcount = rows_read * k; // Number of elements to send
+
+    // Prepare the send buffer (excluding ghost rows)
+    unsigned char *sendbuf = local_array + k; // Starting from the second row
+
+    // The root process prepares the receive buffer
+    unsigned char *recvbuf = NULL;
+    if (rank == 0) {
+        recvbuf = (unsigned char *)malloc(k * k * sizeof(unsigned char)); // Full image size
+    }
+
+    // Gather the data to the root process
+    MPI_Gatherv(sendbuf, sendcount, MPI_UNSIGNED_CHAR,
+                recvbuf, recvcounts, displs, MPI_UNSIGNED_CHAR,
+                0, MPI_COMM_WORLD);
+
+    // The root process writes the image to a PGM file
+    if (rank == 0) {
+        // Generate the output filename, e.g., "output_step_<i>.pgm"
+        char output_filename[256];
+        sprintf(output_filename, "output_step_%d.pgm", i);
+
+        write_pgm_image((void *)recvbuf, maxval, k, k, output_filename);
+        printf("Process %d wrote image %s\n", rank, output_filename);
+
+        // Free the receive buffer after writing
+        free(recvbuf);
+        free(recvcounts);
+        free(displs);
+    }
+}
+
 
 void ordered_ev(char *filename, int rank, int size, int k, int maxval, int s, int t){
 
@@ -95,7 +184,36 @@ void ordered_ev(char *filename, int rank, int size, int k, int maxval, int s, in
     printf("\n");
     */
 
-   // _____________start the evolution for t steps_____________
+    // _____________start the evolution for t steps_____________
+    for (int i = 1; i <= t; i++) {
+        if (rank != 0) {
+            // Send the last row of the current process to the previous process
+            MPI_Send(&local_array[rows_read * k], k, MPI_UNSIGNED_CHAR, rank_above, 0, MPI_COMM_WORLD);
+        }
+
+        // Receive the necessary rows
+        MPI_Recv(local_array, k, MPI_UNSIGNED_CHAR, rank_below, 0, MPI_COMM_WORLD, &status);
+        MPI_Recv(&local_array[(rows_read - 1) * k], k, MPI_UNSIGNED_CHAR, rank_above, 1, MPI_COMM_WORLD, &status);
+
+        // Update the values of the cells
+        update_cell(local_array, rows_read, k);
+
+        if (rank == 0) {
+            // Send the updated last row to the last process
+            MPI_Send(&local_array[rows_read * k], k, MPI_UNSIGNED_CHAR, rank_above, 0, MPI_COMM_WORLD);
+        }
+
+        // Send the necessary rows to the next process
+        MPI_Send(&local_array[(rows_read - 2) * k], k, MPI_UNSIGNED_CHAR, rank_below, 1, MPI_COMM_WORLD);
+    }
+
+
+
+
+
+   }
+
+
    
     
 

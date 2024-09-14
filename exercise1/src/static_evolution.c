@@ -46,6 +46,55 @@ void update_cell(unsigned char *local_array, unsigned char *new_local_array, int
     }
 }
 
+void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, int size, int rows_read, int* list_rows_proc){
+    int *recvcounts = NULL;
+    int *displs = NULL;
+
+    if (rank == 0) {
+        recvcounts = (int *)malloc(size * sizeof(int));
+        displs = (int *)malloc(size * sizeof(int));
+
+        // Prepare recvcounts and displs based on list_rows_proc
+        int offset = 0;
+        for (int p = 0; p < size; p++) {
+            recvcounts[p] = list_rows_proc[p] * k; // Number of elements to receive from each process
+            displs[p] = offset;
+            offset += recvcounts[p];
+        }
+    }
+    // Send counts are the same for all processes
+    int sendcount = rows_read * k; // Number of elements to send
+
+    // Prepare the send buffer (excluding ghost rows)
+    unsigned char *sendbuf = local_array + k; // Starting from the second row
+
+    // The root process prepares the receive buffer
+    unsigned char *recvbuf = NULL;
+    if (rank == 0) {
+        recvbuf = (unsigned char *)malloc(k * k * sizeof(unsigned char)); // Full image size
+    }
+
+    // Gather the data to the root process
+    MPI_Gatherv(sendbuf, sendcount, MPI_UNSIGNED_CHAR,
+                recvbuf, recvcounts, displs, MPI_UNSIGNED_CHAR,
+                0, MPI_COMM_WORLD);
+
+    // The root process writes the image to a PGM file
+    if (rank == 0) {
+        // Generate the output filename, e.g., "output_step_<i>.pgm"
+        char output_filename[256];
+        sprintf(output_filename, "output_step_%d.pgm", i);
+
+        write_pgm_image((void *)recvbuf, maxval, k, k, output_filename);
+        printf("Process %d wrote image %s\n", rank, output_filename);
+
+        // Free the receive buffer after writing
+        free(recvbuf);
+        free(recvcounts);
+        free(displs);
+    }
+}
+
 
 
 
@@ -210,61 +259,21 @@ void static_ev(char *filename, int rank, int size, int k, int maxval, int s, int
         printf("\n");
         printf("\n");
         */
-        
-
-        
+          
         if((s!=0)&&(i%s==0)){
-            int *recvcounts = NULL;
-            int *displs = NULL;
-
-            if (rank == 0) {
-                recvcounts = (int *)malloc(size * sizeof(int));
-                displs = (int *)malloc(size * sizeof(int));
-
-                // Prepare recvcounts and displs based on list_rows_proc
-                int offset = 0;
-                for (int p = 0; p < size; p++) {
-                    recvcounts[p] = list_rows_proc[p] * k; // Number of elements to receive from each process
-                    displs[p] = offset;
-                    offset += recvcounts[p];
-                }
-            }
-            // Send counts are the same for all processes
-            int sendcount = rows_read * k; // Number of elements to send
-
-            // Prepare the send buffer (excluding ghost rows)
-            unsigned char *sendbuf = local_array + k; // Starting from the second row
-
-            // The root process prepares the receive buffer
-            unsigned char *recvbuf = NULL;
-            if (rank == 0) {
-                recvbuf = (unsigned char *)malloc(k * k * sizeof(unsigned char)); // Full image size
-            }
-
-            // Gather the data to the root process
-            MPI_Gatherv(sendbuf, sendcount, MPI_UNSIGNED_CHAR,
-                        recvbuf, recvcounts, displs, MPI_UNSIGNED_CHAR,
-                        0, MPI_COMM_WORLD);
-
-            // The root process writes the image to a PGM file
-            if (rank == 0) {
-                // Generate the output filename, e.g., "output_step_<i>.pgm"
-                char output_filename[256];
-                sprintf(output_filename, "output_step_%d.pgm", i);
-
-                write_pgm_image((void *)recvbuf, maxval, k, k, output_filename);
-                printf("Process %d wrote image %s\n", rank, output_filename);
-
-                // Free the receive buffer after writing
-                free(recvbuf);
-                free(recvcounts);
-                free(displs);
-            }
+            write_array(local_array, i, k, maxval, rank, size, rows_read, list_rows_proc);
         }
     }
-
-
     // write the last step in a .pgm file
-
+    if (s==0){
+        write_array(local_array, t, k, maxval, rank, size, rows_read, list_rows_proc);
+    }
     // free the memory
+    free(new_local_array);
+    free(local_array);
+    // print the result
+    if (rank ==0){
+        free(completeMatrix);
+
+    }
 }
