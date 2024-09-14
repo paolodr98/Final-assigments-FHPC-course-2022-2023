@@ -205,19 +205,20 @@ void ordered_ev(char *filename, int rank, int size, int k, int maxval, int s, in
 
         // Send the necessary rows to the next process
         MPI_Send(&local_array[(rows_read - 2) * k], k, MPI_UNSIGNED_CHAR, rank_below, 1, MPI_COMM_WORLD);
+
+
+    if((s!=0)&&(i%s==0)){
+            write_array(local_array, i, k, maxval, rank, size, rows_read, list_rows_proc);
+        }
     }
+    if (s==0){
+        write_array(local_array, t, k, maxval, rank, size, rows_read, list_rows_proc);
+    }
+    // free the memory
+    free(local_array);
+    // print the result
+    if (rank ==0){
+        free(completeMatrix);
 
-
-
-
-
-   }
-
-
-   
-    
-
-
-
-
+    }
 }
