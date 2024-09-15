@@ -56,6 +56,7 @@ void initialize_parallel(int k, char *fname, int rank, int size, int maxval){
    	MPI_Barrier(MPI_COMM_WORLD);
 	free(local_grid);
 
+	//DEBUG
 	if (rank == 0) {
 		for (int i = 0; i< k*k; i++){
         	printf("%d element: %d\n", i, gathered_grid[i]);
@@ -67,6 +68,29 @@ void initialize_parallel(int k, char *fname, int rank, int size, int maxval){
     }
 
 	return;
+}
+
+
+void initialize_serial(int k, char *fname, int maxval){
+
+	unsigned char* gathered_grid = NULL;
+	gathered_grid = (unsigned char*)malloc(k * k*sizeof(unsigned char));
+
+	srand(time(NULL));
+
+	int  half=  maxval/2;
+	unsigned char minval= (unsigned char)0;
+	unsigned char _maxval= (unsigned char)maxval;
+
+	#pragma omp parallel for
+	for(long i=0; i<k*k; i++){
+        	int random_number = (rand() % (maxval+1));
+        	gathered_grid[i]= (random_number > half)?_maxval:minval;
+			
+        }
+	write_pgm_image((void *) gathered_grid, maxval, k, k, fname);
+	free(gathered_grid);
+
 }
 
 

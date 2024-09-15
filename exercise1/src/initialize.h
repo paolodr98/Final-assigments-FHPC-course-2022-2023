@@ -7,6 +7,7 @@
 
 //void initialize(char *fname, int maxval, int xsize, int ysize);
 void initialize_parallel(int k, char *fname, int rank, int size, int maxval);
+void initialize_serial(int k, char *fname,  int maxval);
 
 #endif 
 

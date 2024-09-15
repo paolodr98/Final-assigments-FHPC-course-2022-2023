@@ -3,8 +3,47 @@
 #include <omp.h>
 #include <mpi.h> 
 
+void update_cell_ordered_serial(unsigned char *local_array, int k){
+    unsigned char max=255; //alive
+	unsigned char min=0; //dead
 
-void update_cell(unsigned char *local_array, int k, int rows_read){
+    for (int i = 0; i<k*k; i++){
+        int count = 0;
+        int row, column;
+
+        row = i/k;
+        column = i%k;
+
+        // Periodic boundary conditions for rows
+        long row_above = (row == 0) ? k-1 : row - 1;
+		long row_below = (row == (k-1)) ? 0 : row + 1;
+
+        // Periodic boundary conditions for columns
+        int col_left = (column == 0) ? k-1 : column - 1;
+		int col_right = (column == (k-1)) ? 0 : column + 1;
+
+        // Sum of neighbors (up, middle, down)
+        int up = local_array[row_above * k + col_left] +
+                 local_array[row_above * k + column] +
+                 local_array[row_above * k + col_right];
+                 
+        int middle = local_array[row * k + col_left] +
+                     local_array[row * k + col_right];
+
+        int down = local_array[row_below * k + col_left] +
+                   local_array[row_below * k + column] +
+                   local_array[row_below * k + col_right];
+
+        count= up + down + middle;
+
+        local_array[i] = (count == 765 || count == 510) ? 255 : 0; 
+
+        //DEBUG
+        printf("Element: %d, up: %d, middle: %d, down: %d, value array: %d\n",i, up, middle, down, local_array[i]);
+    }
+}
+
+void update_cell_ordered(unsigned char *local_array, int k, int rows_read, int rank){
     unsigned char max=255; //alive
 	unsigned char min=0; //dead
 
@@ -40,11 +79,11 @@ void update_cell(unsigned char *local_array, int k, int rows_read){
         local_array[i] = (count == 765 || count == 510) ? 255 : 0; 
 
         //DEBUG
-        /*printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, n_local_array[i-k]);*/
+        printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, local_array[i]);
     }
 }
 
-void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, int size, int rows_read, int* list_rows_proc){
+void write_array_ordered(unsigned char *local_array,int i, int k, int maxval, int rank, int size, int rows_read, int* list_rows_proc){
     int *recvcounts = NULL;
     int *displs = NULL;
 
@@ -93,8 +132,7 @@ void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, 
     }
 }
 
-
-void ordered_ev(char *filename, int rank, int size, int k, int maxval, int s, int t){
+void ordered_ev_parallel(char *filename, int rank, int size, int k, int maxval, int s, int t){
 
     int rows_read = k / size; 
     rows_read = (rank < k % size) ? rows_read+1 : rows_read;
@@ -186,33 +224,47 @@ void ordered_ev(char *filename, int rank, int size, int k, int maxval, int s, in
 
     // _____________start the evolution for t steps_____________
     for (int i = 1; i <= t; i++) {
-        if (rank != 0) {
-            // Send the last row of the current process to the previous process
-            MPI_Send(&local_array[rows_read * k], k, MPI_UNSIGNED_CHAR, rank_above, 0, MPI_COMM_WORLD);
+
+        printf("----------ITERATION %d-----------------\n",i);
+        for (int p = 0; p < size; p++){
+            // update the array and the the last row data as first auxiliary to next processor
+            if (rank == p) {
+                update_cell_ordered(local_array, k, rows_read, p); // Update the local grid
+                int send_to = (rank + 1) % size; // Next processor, wrapping around to 0
+                MPI_Send(local_array + rows_read * k, k, MPI_UNSIGNED_CHAR, send_to, 0, MPI_COMM_WORLD); 
+            }
+
+            // the next processor receive the first auxiliary row from prevoius processor
+            if (rank == (p + 1) % size) {       
+                int recv_from = (rank - 1 + size) % size; // Previous processor, wrapping around to size-1
+                MPI_Recv(local_array, k, MPI_UNSIGNED_CHAR, recv_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+
+            // Synchronize all processors before proceeding to the next communication/update step
+            MPI_Barrier(MPI_COMM_WORLD);
+
+            //the current processor send the first data row to the previous processor as last auxiliary row
+            if (rank == p) {
+                int send_to = (rank - 1 + size) % size; // Next processor, wrapping around to 0
+                MPI_Send(local_array + k, k, MPI_UNSIGNED_CHAR, send_to, 0, MPI_COMM_WORLD);
+            }
+
+            // the previour processor receive the last auxiliary row from prevoius processor
+            if (rank == (p - 1 + size) % size) {       
+                int recv_from = (rank + 1 + size) % size;// Previous processor, wrapping around to size-1
+                MPI_Recv(local_array + (rows_read + 1) * k, k, MPI_UNSIGNED_CHAR, recv_from, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+            }
+            // Synchronize all processors before proceeding to the next communication/update step
+            MPI_Barrier(MPI_COMM_WORLD);
+
         }
 
-        // Receive the necessary rows
-        MPI_Recv(local_array, k, MPI_UNSIGNED_CHAR, rank_below, 0, MPI_COMM_WORLD, &status);
-        MPI_Recv(&local_array[(rows_read - 1) * k], k, MPI_UNSIGNED_CHAR, rank_above, 1, MPI_COMM_WORLD, &status);
-
-        // Update the values of the cells
-        update_cell(local_array, rows_read, k);
-
-        if (rank == 0) {
-            // Send the updated last row to the last process
-            MPI_Send(&local_array[rows_read * k], k, MPI_UNSIGNED_CHAR, rank_above, 0, MPI_COMM_WORLD);
-        }
-
-        // Send the necessary rows to the next process
-        MPI_Send(&local_array[(rows_read - 2) * k], k, MPI_UNSIGNED_CHAR, rank_below, 1, MPI_COMM_WORLD);
-
-
-    if((s!=0)&&(i%s==0)){
-            write_array(local_array, i, k, maxval, rank, size, rows_read, list_rows_proc);
-        }
+        if((s!=0)&&(i%s==0)){
+                write_array_ordered(local_array, i, k, maxval, rank, size, rows_read, list_rows_proc);
+            }
     }
     if (s==0){
-        write_array(local_array, t, k, maxval, rank, size, rows_read, list_rows_proc);
+        write_array_ordered(local_array, t, k, maxval, rank, size, rows_read, list_rows_proc);
     }
     // free the memory
     free(local_array);
@@ -221,4 +273,36 @@ void ordered_ev(char *filename, int rank, int size, int k, int maxval, int s, in
         free(completeMatrix);
 
     }
+}
+
+void ordered_ev_serial(char *filename, int k, int maxval, int s, int t){
+
+    unsigned char *completeMatrix = NULL;
+    unsigned char *first_row = NULL;
+
+    completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
+	read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
+
+    // _____________start the evolution for t steps_____________
+
+    for(int i=1; i <=t; i++){ 
+
+        printf("----------ITERATION %d-----------------\n",i);
+        printf("\n");
+
+        update_cell_ordered_serial(completeMatrix, k);
+
+        if((s!=0)&&(i%s==0)){
+                char output_filename[256];
+                sprintf(output_filename, "output_step_%d.pgm", i);
+                write_pgm_image((void *)completeMatrix, maxval, k, k, output_filename); 
+            }
+    }
+    if (s==0){
+        char output_filename[256];
+        sprintf(output_filename, "output_step_%d.pgm", t);
+        write_pgm_image((void *)completeMatrix, maxval, k, k, output_filename); 
+    }
+    free(completeMatrix);
+
 }

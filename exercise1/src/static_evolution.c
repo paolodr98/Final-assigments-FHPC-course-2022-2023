@@ -5,9 +5,10 @@
 
 
 
-void update_cell(unsigned char *local_array, unsigned char *new_local_array, int k, int rows_read, int rank){
+void update_cell(unsigned char *local_array, unsigned char *new_local_array, int k, int rows_read){
     unsigned char max=255; //alive
 	unsigned char min=0; //dead
+
 
     #pragma omp parallel for
     for (int i = k; i<(rows_read+1)*k; i++){
@@ -42,8 +43,9 @@ void update_cell(unsigned char *local_array, unsigned char *new_local_array, int
         new_local_array[i] = (count == 765 || count == 510) ? 255 : 0; 
 
         //DEBUG
-        /*printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, n_local_array[i-k]);*/
+        printf("Element: %d, up: %d, middle: %d, down: %d, value array: %d\n", i, up, middle, down, new_local_array[i]);
     }
+    printf("\n");
 }
 
 void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, int size, int rows_read, int* list_rows_proc){
@@ -86,7 +88,6 @@ void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, 
         sprintf(output_filename, "output_step_%d.pgm", i);
 
         write_pgm_image((void *)recvbuf, maxval, k, k, output_filename);
-        printf("Process %d wrote image %s\n", rank, output_filename);
 
         // Free the receive buffer after writing
         free(recvbuf);
@@ -95,10 +96,7 @@ void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, 
     }
 }
 
-
-
-
-void static_ev(char *filename, int rank, int size, int k, int maxval, int s, int t){
+void static_ev_parallel(char *filename, int rank, int size, int k, int maxval, int s, int t){
 
     int rows_read = k / size; 
     rows_read = (rank < k % size) ? rows_read+1 : rows_read;
@@ -196,7 +194,7 @@ void static_ev(char *filename, int rank, int size, int k, int maxval, int s, int
 
         printf("----------ITERATION %d-----------------\n",i);
 
-        update_cell(local_array, new_local_array, k, rows_read, rank);
+        update_cell(local_array, new_local_array, k, rows_read);
 
         //DEBUG
         
@@ -276,4 +274,75 @@ void static_ev(char *filename, int rank, int size, int k, int maxval, int s, int
         free(completeMatrix);
 
     }
+}
+
+void static_ev_serial(char *filename, int k, int maxval, int s, int t){
+
+    unsigned char *completeMatrix = NULL;
+    unsigned char *local_array = NULL;
+    unsigned char *new_local_array = NULL;
+    int rows_read = k;
+
+    completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
+	read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
+
+    local_array = (unsigned char*)malloc((rows_read+2) * k * sizeof(unsigned char)); // allocate memory on each processor
+    
+    for(int i = 0; i < k; i++){
+        local_array[i] = completeMatrix[(k - 1) * k + i];
+    }
+    for(int i = 0; i < k*k;i++){
+        local_array[k+i] = completeMatrix[i];
+    }
+    for(int i = 0; i<k; i++){
+        local_array[k*(k+1)+i]=completeMatrix[i];
+    }
+    
+
+    // _____________start the evolution for t steps_____________
+    new_local_array = (unsigned char*)malloc((rows_read+2) * k * sizeof(unsigned char));
+    
+    for(int i=1; i <=t; i++){ 
+
+        printf("----------ITERATION %d-----------------\n",i);
+        printf("\n");
+
+        update_cell(local_array, new_local_array, k, rows_read);
+
+        for(int i = 0; i < k; i++){
+            new_local_array[i] = new_local_array[k*k+i]; //update auxiliary rows
+            new_local_array[k*(k+1)+i] = new_local_array[k+i];
+        }
+
+        unsigned char *temp = new_local_array;
+        new_local_array = local_array;
+        local_array = temp;
+
+        if((s!=0)&&(i%s==0)){
+            char output_filename[256];
+            sprintf(output_filename, "output_step_%d.pgm", i);
+            for (int i = 0; i<k*k; i++){
+                completeMatrix[i]=local_array[k+i];
+            }
+
+            write_pgm_image((void *)completeMatrix, maxval, k, k, output_filename); 
+        }
+
+    }
+    // write the last step in a .pgm file
+    if (s==0){
+        char output_filename[256];
+        sprintf(output_filename, "output_step_%d.pgm", t);
+        for (int i = 0; i<k*k; i++){
+            completeMatrix[i]=local_array[k+i];
+        }
+
+        write_pgm_image((void *)completeMatrix, maxval, k, k, output_filename);
+    }
+    
+    // free the memory
+    free(new_local_array);
+    free(local_array);
+    // print the result
+    free(completeMatrix);
 }

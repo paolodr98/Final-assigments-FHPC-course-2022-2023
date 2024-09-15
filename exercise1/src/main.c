@@ -37,13 +37,34 @@ int main ( int argc, char **argv){
 
     char fname[100] = "try01.pgm";
     int k = 5;
-    int rank, size;
+    //int rank, size;
     int maxval = 255;
-    MPI_Init( NULL, NULL );
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    int t = 5;
+    int t = 2;
     int s = 1;
+
+    MPI_Status status;
+	MPI_Request req;
+
+    	//Initialize MPI environment
+	int mpi_provided_thread_level;
+	MPI_Init_thread( &argc, &argv, MPI_THREAD_FUNNELED, &mpi_provided_thread_level);
+	if ( mpi_provided_thread_level < MPI_THREAD_FUNNELED ) { 
+		printf("a problem arise when asking for MPI_THREAD_FUNNELED level\n"); 
+		MPI_Finalize(); 
+		exit( 1 );
+	}
+
+
+    int rank, size;
+
+    // Get the rank of the current process
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Get the total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    printf("N size: %d\n", size);
+
 
     /*
     int action = 0;
@@ -84,17 +105,37 @@ int main ( int argc, char **argv){
 
     /*  START my code   */
 
-    int rows_read = k / size; 
-    rows_read = (rank < k % size) ? rows_read+1 : rows_read;
 
     /*
-    initialize_parallel(k, fname, rank, size, maxval);
+    if (size == 1){
+        initialize_serial(k,fname,maxval);
+    }else{
+        initialize_parallel(k, fname, rank, size, maxval);
+    }
     if (rank == 0){
         printf("INIT DONE\n");
     }
     */
 
-    static_ev(fname, rank, size, k, maxval, s,t);
+   /*
+    if (size == 1){
+        static_ev_serial(fname, k, maxval, s, t);
+    }else{
+        static_ev_parallel(fname, rank, size, k, maxval, s,t);
+    }
+    if (rank == 0){
+        printf("EVOLUTION DONE\n");
+    }
+    */
+    if (size == 1){
+        ordered_ev_serial(fname, k, maxval, s, t);
+    }else{
+        ordered_ev_parallel(fname, rank, size, k, maxval, s,t);
+    }
+    if (rank == 0){
+        printf("EVOLUTION DONE\n");
+    }
+
 
     /*
     if(action == INIT){
