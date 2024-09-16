@@ -85,7 +85,7 @@ void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, 
     if (rank == 0) {
         // Generate the output filename, e.g., "output_step_<i>.pgm"
         char output_filename[256];
-        sprintf(output_filename, "output_step_%d.pgm", i);
+        sprintf(output_filename, "static_parallel_output_step_%d.pgm", i);
 
         write_pgm_image((void *)recvbuf, maxval, k, k, output_filename);
 
@@ -103,6 +103,7 @@ void static_ev_parallel(char *filename, int rank, int size, int k, int maxval, i
     unsigned char *local_array = NULL;
     unsigned char *new_local_array = NULL;
     unsigned char *completeMatrix = NULL;
+    double start_time, end_time;
 
     int rank_above= (rank==0)? size-1 : rank-1;
   	int rank_below= (rank==size-1)? 0: rank+1;
@@ -110,6 +111,7 @@ void static_ev_parallel(char *filename, int rank, int size, int k, int maxval, i
 
     // _____________read the image in root processor_____________
     if(rank==0){
+        start_time = MPI_Wtime();
         completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
 		read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
         
@@ -272,6 +274,10 @@ void static_ev_parallel(char *filename, int rank, int size, int k, int maxval, i
     // print the result
     if (rank ==0){
         free(completeMatrix);
+        end_time = MPI_Wtime();
+        double elapsed_time = end_time - start_time;
+        printf("STATIC_PARALLEL: Dimension: %ld,\t Size: %d,\t Threads: %d,\t Time: %f\n",k,size,omp_get_max_threads(),elapsed_time);
+
 
     }
 }
@@ -282,7 +288,10 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
     unsigned char *local_array = NULL;
     unsigned char *new_local_array = NULL;
     int rows_read = k;
+    double start_time, end_time;
 
+
+    start_time = MPI_Wtime();
     completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
 	read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
 
@@ -320,7 +329,7 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
 
         if((s!=0)&&(i%s==0)){
             char output_filename[256];
-            sprintf(output_filename, "output_step_%d.pgm", i);
+            sprintf(output_filename, "static_serial_output_step_%d.pgm", i);
             for (int i = 0; i<k*k; i++){
                 completeMatrix[i]=local_array[k+i];
             }
@@ -332,7 +341,7 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
     // write the last step in a .pgm file
     if (s==0){
         char output_filename[256];
-        sprintf(output_filename, "output_step_%d.pgm", t);
+        sprintf(output_filename, "static_serial_output_step_%d.pgm", t);
         for (int i = 0; i<k*k; i++){
             completeMatrix[i]=local_array[k+i];
         }
@@ -345,4 +354,9 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
     free(local_array);
     // print the result
     free(completeMatrix);
+    end_time = MPI_Wtime();
+    double elapsed_time = end_time - start_time;
+    printf("STATIC_SERIAL: Dimension: %ld,\t Size: %d,\t Threads: %d,\t Time: %f\n",k,1,omp_get_max_threads(),elapsed_time);
+
+    
 }

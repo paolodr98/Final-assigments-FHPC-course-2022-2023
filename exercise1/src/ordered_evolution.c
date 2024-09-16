@@ -120,7 +120,7 @@ void write_array_ordered(unsigned char *local_array,int i, int k, int maxval, in
     if (rank == 0) {
         // Generate the output filename, e.g., "output_step_<i>.pgm"
         char output_filename[256];
-        sprintf(output_filename, "output_step_%d.pgm", i);
+        sprintf(output_filename, "ordered_parallel_output_step_%d.pgm", i);
 
         write_pgm_image((void *)recvbuf, maxval, k, k, output_filename);
         printf("Process %d wrote image %s\n", rank, output_filename);
@@ -139,6 +139,7 @@ void ordered_ev_parallel(char *filename, int rank, int size, int k, int maxval, 
     unsigned char *local_array = NULL;
     unsigned char *new_local_array = NULL;
     unsigned char *completeMatrix = NULL;
+    double start_time, end_time;
 
     int rank_above= (rank==0)? size-1 : rank-1;
   	int rank_below= (rank==size-1)? 0: rank+1;
@@ -146,6 +147,7 @@ void ordered_ev_parallel(char *filename, int rank, int size, int k, int maxval, 
 
     // _____________read the image in root processor_____________
     if(rank==0){
+        start_time = MPI_Wtime();
         completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
 		read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
         
@@ -271,6 +273,9 @@ void ordered_ev_parallel(char *filename, int rank, int size, int k, int maxval, 
     // print the result
     if (rank ==0){
         free(completeMatrix);
+        end_time = MPI_Wtime();
+        double elapsed_time = end_time - start_time;
+        printf("ORDERED_PARALLEL: Dimension: %ld,\t Size: %d,\t Threads: %d,\t Time: %f\n",k,size,omp_get_max_threads(),elapsed_time);
 
     }
 }
@@ -279,6 +284,9 @@ void ordered_ev_serial(char *filename, int k, int maxval, int s, int t){
 
     unsigned char *completeMatrix = NULL;
     unsigned char *first_row = NULL;
+    double start_time, end_time;
+
+    start_time = MPI_Wtime();
 
     completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
 	read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
@@ -294,15 +302,18 @@ void ordered_ev_serial(char *filename, int k, int maxval, int s, int t){
 
         if((s!=0)&&(i%s==0)){
                 char output_filename[256];
-                sprintf(output_filename, "output_step_%d.pgm", i);
+                sprintf(output_filename, "ordered_serial_output_step_%d.pgm", i);
                 write_pgm_image((void *)completeMatrix, maxval, k, k, output_filename); 
             }
     }
     if (s==0){
         char output_filename[256];
-        sprintf(output_filename, "output_step_%d.pgm", t);
+        sprintf(output_filename, "ordered_serial_output_step_%d.pgm", t);
         write_pgm_image((void *)completeMatrix, maxval, k, k, output_filename); 
     }
     free(completeMatrix);
+    end_time = MPI_Wtime();
+    double elapsed_time = end_time - start_time;
+    printf("ORDERED_SERIAL: Dimension: %ld,\t Size: %d,\t Threads: %d,\t Time: %f\n",k,1,omp_get_max_threads(),elapsed_time);
 
 }
