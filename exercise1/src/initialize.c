@@ -83,8 +83,9 @@ void initialize_parallel(int k, char *fname, int rank, int size, int maxval){
         }
 		printf("\n");
 		*/
-
-		write_pgm_image((void *) gathered_grid, maxval, k, k, fname);
+		char file_path[45] = "images/";
+		strcat(file_path, fname);
+		write_pgm_image((void *) gathered_grid, maxval, k, k, file_path);
 	    free(gathered_grid);
     }
 	
@@ -108,7 +109,10 @@ void initialize_serial(int k, char *fname, int maxval){
         	gathered_grid[i]= (random_number > half)?_maxval:minval;
 			
         }
-	write_pgm_image((void *) gathered_grid, maxval, k, k, fname);
+	char file_path[45] = "images/";
+	strcat(file_path, fname);
+	
+	write_pgm_image((void *) gathered_grid, maxval, k, k, file_path);
 	free(gathered_grid);
 
 }

@@ -86,7 +86,7 @@ void write_array(unsigned char *local_array,int i, int k, int maxval, int rank, 
         char file_path[45] = "images/evolve_static/";
         char filename[256];
         
-        snprintf(filename, 256, "static_parallel_output_step_%d.pgm", i);
+        snprintf(filename, 256, "static_parallel_step_%d.pgm", i);
         strcat(file_path, filename);
         //char output_filename[256];
         //sprintf(output_filename, "static_parallel_output_step_%d.pgm", i);
@@ -116,8 +116,10 @@ void static_ev_parallel(char *filename, int rank, int size, int k, int maxval, i
     // _____________read the image in root processor_____________
     if(rank==0){
         start_time = MPI_Wtime();
+        char file_path_r[45] = "images/";
+	    strcat(file_path_r, filename);
         completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
-		read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
+		read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, file_path_r); //Initialize the matrix by reading the pgm file where it's stored
         
         //DEBUG
         /*
@@ -296,8 +298,10 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
 
 
     start_time = MPI_Wtime();
+    char file_path_r[45] = "images/";
+	strcat(file_path_r, filename);
     completeMatrix = (unsigned char*)malloc(k*k *sizeof(unsigned char));
-	read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, filename); //Initialize the matrix by reading the pgm file where it's stored
+	read_pgm_image((void**)&completeMatrix, &maxval, &k, &k, file_path_r); //Initialize the matrix by reading the pgm file where it's stored
 
     local_array = (unsigned char*)malloc((rows_read+2) * k * sizeof(unsigned char)); // allocate memory on each processor
     
@@ -333,9 +337,9 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
 
         if((s!=0)&&(i%s==0)){
             char file_path[45] = "images/evolve_static/";
-            char filename[40];
+            char filename[256];
 
-            snprintf(filename, 40, "static_serial_output_step_%d.pgm", i);
+            snprintf(filename, 256, "static_serial_step_%d.pgm", i);
             strcat(file_path, filename);
 
             //char output_filename[256];
@@ -351,9 +355,9 @@ void static_ev_serial(char *filename, int k, int maxval, int s, int t){
     // write the last step in a .pgm file
     if (s==0){
         char file_path[45] = "images/evolve_static/";
-        char filename[40];
+        char filename[256];
 
-        snprintf(filename, 40, "static_serial_output_step_%d.pgm", t);
+        snprintf(filename, 256, "static_serial_step_%d.pgm", t);
         strcat(file_path, filename);
 
 
