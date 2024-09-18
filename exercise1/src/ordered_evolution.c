@@ -39,7 +39,7 @@ void update_cell_ordered_serial(unsigned char *local_array, int k){
         local_array[i] = (count == 765 || count == 510) ? 255 : 0; 
 
         //DEBUG
-        printf("Element: %d, up: %d, middle: %d, down: %d, value array: %d\n",i, up, middle, down, local_array[i]);
+        //printf("Element: %d, up: %d, middle: %d, down: %d, value array: %d\n",i, up, middle, down, local_array[i]);
     }
 }
 
@@ -79,7 +79,7 @@ void update_cell_ordered(unsigned char *local_array, int k, int rows_read, int r
         local_array[i] = (count == 765 || count == 510) ? 255 : 0; 
 
         //DEBUG
-        printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, local_array[i]);
+        //printf("Processor %d, element: %d, up: %d, middle: %d, down: %d, value array: %d\n",rank, i, up, middle, down, local_array[i]);
     }
 }
 
@@ -227,7 +227,7 @@ void ordered_ev_parallel(char *filename, int rank, int size, int k, int maxval, 
     // _____________start the evolution for t steps_____________
     for (int i = 1; i <= t; i++) {
 
-        printf("----------ITERATION %d-----------------\n",i);
+        //printf("----------ITERATION %d-----------------\n",i);
         for (int p = 0; p < size; p++){
             // update the array and the the last row data as first auxiliary to next processor
             if (rank == p) {
@@ -295,8 +295,8 @@ void ordered_ev_serial(char *filename, int k, int maxval, int s, int t){
 
     for(int i=1; i <=t; i++){ 
 
-        printf("----------ITERATION %d-----------------\n",i);
-        printf("\n");
+        //printf("----------ITERATION %d-----------------\n",i);
+        //printf("\n");
 
         update_cell_ordered_serial(completeMatrix, k);
 

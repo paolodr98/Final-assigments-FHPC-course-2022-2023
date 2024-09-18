@@ -30,7 +30,7 @@ int   s      = 0;
 char *fname  = NULL;
 
 
-int main ( int argc, char **argv){
+int main (int argc, char **argv){
 
     int maxval = MAXVAL;
 
@@ -106,34 +106,38 @@ int main ( int argc, char **argv){
         
 
     }
-
-    /*
+    
     if (action == RUN){
         if (fname == NULL) {
                     printf("No name was passed, the program will try to read from %s\n\n", fname_deflt);
                 fname = (char*) malloc(sizeof(fname_deflt));
                 sprintf(fname, "%s", fname_deflt);
         }
-        if(e==ORDERED){
+        if(e==0){
             if(size==1){
                 ordered_ev_serial(fname, k, maxval, s, n);
+                printf("ordered_ev_serial DONE\n");
             } else {
                 ordered_ev_parallel(fname, rank, size, k, maxval, s, n);
+                printf("ordered_ev_parallel DONE\n"); 
             }
         //run the static evolution
-        }else if(e==STATIC){
+        }else if(e==1){
             if(size==1){
                 static_ev_serial(fname, k, maxval, s, n);
+                printf("static_ev_serial DONE\n"); 
             } else {
                 static_ev_parallel(fname, rank, size, k, maxval, s, n);
+                printf("static_ev_parallel DONE\n"); 
             }
         } else {
             printf("Invalid input: e can only take value in {0,1}\n"); 
             MPI_Finalize(); 
             exit( 1 );
-        }     
+        }   
+        
     }
-    */
+    
 
     /*  END  */
 
