@@ -1,4 +1,0 @@
-No name was passed, the program will try to read from game_of_life.pgm
-
-No name was passed, the program will try to read from game_of_life.pgm
-
