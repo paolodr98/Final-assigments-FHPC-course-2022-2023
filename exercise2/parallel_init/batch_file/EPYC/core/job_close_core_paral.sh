@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=1 
 #SBATCH --cpus-per-task=128
 #SBATCH --mem=200gb 
-#SBATCH --time=00:40:00 
+#SBATCH --time=02:00:00 
 #SBATCH --exclusive
 #SBATCH --output=cores_close.out
 
@@ -27,9 +27,9 @@ srun -n1 make -C $make_dir cpu # Now I have all the needed executables.
 m_size=10000
 
 # Loop over implementations and data types
-for implem in 'blis' # 'oblas' 'mkl' 
+for implem in 'blis' 'oblas' 'mkl' 
 do
-    for type in 'double' # float' 
+    for type in 'double' 'float' 
     do
         filename="$output_dir/$implem"_"$type".csv
         # Check if the file exists, if not create it and write the header
