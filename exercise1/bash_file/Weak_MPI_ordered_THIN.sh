@@ -5,7 +5,7 @@
 #SBATCH --ntasks-per-node=2 
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=200gb 
-#SBATCH --time=02:00:00 
+#SBATCH --time=01:00:00 
 #SBATCH --exclusive
 #SBATCH --output=MPI_weak_THIN_ordered.out
 
@@ -32,9 +32,9 @@ s=0
 nsteps=100
 
 # Define the unique ksize values for each mpi_task
-ksize_values=(100 141 173 200 224 245 265 283)
+ksize_values=(1000 1414 1732 2000 2236 2449 2646 2828)
 
-filename="$output_dir/THIN_ordered"_"$mpi_task".csv
+filename="$output_dir/THIN_ordered"_"2".csv
 if [ ! -e $filename ]; then
     echo "ksize,mpi_task,time,thread" > $filename
 fi  
