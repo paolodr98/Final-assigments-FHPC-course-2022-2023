@@ -32,9 +32,9 @@ s=0
 nsteps=100
 
 # Define the unique ksize values for each mpi_task
-ksize_values=(1000 1414 1732 2000 2236 2449 2646 2828)
+ksize_values=(10000 14142 17321 20000 22361 24495 26458 28284)
 
-filename="$output_dir/THIN_static"_"2".csv
+filename="$output_dir/THIN_static"_"3".csv
 if [ ! -e $filename ]; then
     echo "ksize,mpi_task,time,thread" > $filename
 fi  
