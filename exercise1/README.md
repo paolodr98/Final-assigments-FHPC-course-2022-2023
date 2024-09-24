@@ -1,5 +1,6 @@
 # Exercise 1
 
+This folder contains the necessary files to implement, run and analyze the parallelized version of the game of life. 
 There are several directories:
 
 * `bash_file/` : There are the bash files used to run the experiments. There are also those one for EPYC node even if they are not used.
